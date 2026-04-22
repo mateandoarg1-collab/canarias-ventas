@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canarias · Mayorista — Mateando</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --verde:#1a4d2e;--verde-mid:#2d6a40;--crema:#f5f0e8;--crema-dark:#ede5d4;
+    --arena:#c8b99a;--texto:#1a1a1a;--texto-light:#6b6b5a;
+    --rojo:#c0392b;--verde-g:#1a7a3c;--amarillo:#c97d00;--azul:#2c4a6e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--crema);font-family:'DM Sans',sans-serif;color:var(--texto);min-height:100vh;}
+
+  header{background:var(--verde);padding:20px 40px;display:flex;align-items:center;justify-content:space-between;}
+  .header-left h1{font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--crema);}
+  .header-left p{font-size:11px;color:var(--arena);margin-top:3px;letter-spacing:1.5px;text-transform:uppercase;}
+  .header-right{display:flex;align-items:center;gap:12px;}
+  .header-badge{background:var(--crema);color:var(--verde);font-size:11px;font-weight:600;padding:6px 14px;border-radius:20px;}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:#7ed9a0;display:inline-block;}
+  .sync-dot.off{background:#e0a0a0;}
+  .sync-label{font-size:11px;color:var(--arena);}
+
+  .tabs{display:flex;background:var(--verde);padding:0 40px;border-top:1px solid rgba(255,255,255,0.1);overflow-x:auto;}
+  .tab{padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--arena);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.2s;white-space:nowrap;}
+  .tab:hover{color:var(--crema);}
+  .tab.active{color:var(--crema);border-bottom-color:#7ed9a0;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+  main{max-width:1060px;margin:0 auto;padding:28px 24px 60px;}
+  .sec{font-size:11px;font-weight:600;color:var(--texto-light);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+
+  /* FORM PEDIDO */
+  .cliente-bar{background:white;border:1.5px solid var(--crema-dark);border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;}
+  .cliente-bar label{font-size:11px;font-weight:600;color:var(--texto-light);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;}
+  .cliente-bar select,.cliente-bar input[type=date]{padding:8px 12px;border:1.5px solid var(--crema-dark);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;background:var(--crema);color:var(--texto);outline:none;}
+  .cliente-bar select{min-width:200px;}
+  .cliente-tag{font-size:12px;color:var(--texto-light);background:var(--crema-dark);padding:5px 12px;border-radius:6px;}
+  .cliente-tag strong{color:var(--verde);}
+
+  .add-row{background:white;border:1.5px solid var(--crema-dark);border-radius:12px;padding:16px 20px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:10px;}
+  .campo label{display:block;font-size:11px;font-weight:600;color:var(--texto-light);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+  .campo select,.campo input{width:100%;padding:9px 11px;border:1.5px solid var(--crema-dark);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--crema);color:var(--texto);outline:none;transition:border-color 0.2s;}
+  .campo select:focus,.campo input:focus{border-color:var(--verde-mid);}
+  .btn-add{background:var(--verde);color:var(--crema);border:none;border-radius:8px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.2s,transform 0.1s;}
+  .btn-add:hover{background:var(--verde-mid);transform:translateY(-1px);}
+
+  .preview{background:var(--crema-dark);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--texto-light);min-height:36px;display:flex;align-items:center;margin-bottom:22px;}
+  .preview strong{color:var(--verde);}
+
+  .tbl-wrap{border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 2px 12px rgba(26,77,46,0.07);}
+  table{width:100%;border-collapse:collapse;background:white;}
+  thead tr{background:var(--verde);}
+  thead th{padding:11px 12px;font-size:10px;font-weight:600;color:var(--arena);letter-spacing:1.5px;text-transform:uppercase;text-align:right;}
+  thead th:first-child{text-align:left;}
+  tbody tr{border-bottom:1px solid var(--crema-dark);transition:background 0.12s;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:#faf8f4;}
+  tbody td{padding:10px 12px;font-size:13px;text-align:right;}
+  tbody td:first-child{text-align:left;}
+  .ty{font-weight:600;color:var(--verde);}
+  .tm{background:var(--crema-dark);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--texto-light);display:inline-block;margin-top:2px;}
+  .td-m{font-weight:700;font-size:13px;}
+  .mg{color:var(--verde-g);}.mm{color:var(--amarillo);}.mr{color:var(--rojo);}
+  .btn-x{background:none;border:none;cursor:pointer;color:#ccc;font-size:15px;transition:color 0.2s;padding:0 2px;}
+  .btn-x:hover{color:var(--rojo);}
+  .inp-t{width:100px;padding:5px 8px;border:1.5px solid var(--crema-dark);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;text-align:right;background:var(--crema);outline:none;}
+  .inp-t:focus{border-color:var(--verde-mid);}
+
+  .tot-bar{background:var(--verde);border-radius:0 0 12px 12px;padding:14px 20px;display:grid;grid-template-columns:repeat(4,1fr);}
+  .tot-item{text-align:center;padding:0 10px;border-right:1px solid rgba(255,255,255,0.15);}
+  .tot-item:last-child{border-right:none;}
+  .tot-lbl{font-size:10px;color:var(--arena);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:4px;}
+  .tot-val{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--crema);}
+  .tot-val.g{color:#7ed9a0;}
+
+  .empty{text-align:center;padding:44px 0;color:var(--arena);}
+  .empty .ei{font-size:32px;margin-bottom:8px;}
+  .nota{margin-top:12px;font-size:11.5px;color:var(--texto-light);padding:9px 14px;background:var(--crema-dark);border-radius:8px;border-left:3px solid var(--arena);}
+  .acc{display:flex;justify-content:space-between;align-items:center;margin-top:14px;}
+  .btn-sec{background:none;border:1.5px solid var(--arena);color:var(--texto-light);border-radius:8px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all 0.2s;}
+  .btn-sec:hover{border-color:var(--rojo);color:var(--rojo);}
+  .btn-registrar{background:var(--verde-g);color:white;border:none;border-radius:8px;padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:7px;}
+  .btn-registrar:hover{background:#155e2e;transform:translateY(-1px);}
+  .btn-registrar:disabled{background:#aaa;cursor:not-allowed;transform:none;}
+
+  /* HISTORIAL */
+  .hist-filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+  .hist-filters select{padding:8px 12px;border:1.5px solid var(--crema-dark);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--crema);color:var(--texto);outline:none;}
+  .venta-card{background:white;border-radius:10px;border:1.5px solid var(--crema-dark);margin-bottom:12px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.05);}
+  .venta-header{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+  .venta-header:hover{background:#faf8f4;}
+  .vh-left{display:flex;align-items:center;gap:14px;}
+  .vh-fecha{font-size:12px;font-weight:700;color:var(--verde);background:rgba(26,77,46,0.08);padding:4px 10px;border-radius:6px;}
+  .vh-cliente{font-size:14px;font-weight:600;}
+  .vh-resumen{font-size:12px;color:var(--texto-light);margin-top:2px;}
+  .vh-right{display:flex;align-items:center;gap:16px;}
+  .vh-ganancia{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--verde-g);}
+  .vh-margen{font-size:12px;font-weight:600;padding:3px 8px;border-radius:5px;}
+  .vh-margen.mg{background:rgba(26,122,60,0.12);color:var(--verde-g);}
+  .vh-margen.mm{background:rgba(201,125,0,0.12);color:var(--amarillo);}
+  .vh-margen.mr{background:rgba(192,57,43,0.12);color:var(--rojo);}
+  .vh-chevron{color:var(--arena);transition:transform 0.2s;font-size:12px;}
+  .vh-chevron.open{transform:rotate(180deg);}
+  .venta-body{display:none;border-top:1px solid var(--crema-dark);}
+  .venta-body.open{display:block;}
+  .venta-body table{border-radius:0;box-shadow:none;}
+  .venta-body thead tr{background:#f0ece3;}
+  .venta-body thead th{color:var(--texto-light);}
+  .btn-del-venta{background:none;border:1.5px solid #e0cfc0;color:#bbb;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;transition:all 0.2s;}
+  .btn-del-venta:hover{border-color:var(--rojo);color:var(--rojo);}
+
+  /* POR MES */
+  .mes-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .kpi-card{background:white;border-radius:10px;padding:16px 18px;border:1.5px solid var(--crema-dark);}
+  .kpi-lbl{font-size:10px;font-weight:600;color:var(--texto-light);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
+  .kpi-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--texto);}
+  .kpi-val.green{color:var(--verde-g);}
+  .mes-table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+  .mes-table thead tr{background:var(--verde);}
+  .mes-table thead th{padding:11px 14px;font-size:10px;font-weight:600;color:var(--arena);letter-spacing:1.5px;text-transform:uppercase;text-align:right;}
+  .mes-table thead th:first-child{text-align:left;}
+  .mes-table tbody td{padding:11px 14px;font-size:13px;text-align:right;border-bottom:1px solid var(--crema-dark);}
+  .mes-table tbody tr:last-child td{border-bottom:none;}
+  .mes-table tbody td:first-child{text-align:left;font-weight:700;color:var(--verde);}
+  .mes-table tbody tr:hover{background:#faf8f4;}
+  .por-cliente{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .pc-card{background:white;border-radius:10px;overflow:hidden;border:1.5px solid var(--crema-dark);}
+  .pc-head{padding:12px 18px;font-weight:700;font-size:14px;color:white;}
+  .pc-body{padding:14px 18px;}
+  .pc-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--crema-dark);font-size:13px;}
+  .pc-row:last-child{border-bottom:none;}
+  .pc-row .lbl{color:var(--texto-light);}
+  .pc-row .val{font-weight:600;}
+  .pc-row .val.g{color:var(--verde-g);}
+
+  /* CLIENTES */
+  .cli-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .btn-nuevo-cli{background:var(--verde);color:var(--crema);border:none;border-radius:8px;padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+  .btn-nuevo-cli:hover{background:var(--verde-mid);}
+  .cli-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+  .cli-card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.07);border:1.5px solid var(--crema-dark);}
+  .cli-card-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+  .cli-card-head h3{font-family:'Playfair Display',serif;font-size:16px;color:white;}
+  .cli-card-head .cli-avg{font-size:19px;font-weight:700;color:#7ed9a0;font-family:'Playfair Display',serif;}
+  .cli-card-head .cli-avg-l{font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;text-align:right;}
+  .cli-card-body{padding:12px 18px;}
+  .cli-price-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--crema-dark);font-size:12px;}
+  .cli-price-row:last-child{border-bottom:none;}
+  .cli-price-row .pname{color:var(--texto-light);}
+  .cli-price-row .pval{font-weight:600;}
+  .cli-actions{padding:10px 18px;display:flex;gap:8px;border-top:1px solid var(--crema-dark);}
+  .btn-edit-cli{background:none;border:1.5px solid var(--crema-dark);color:var(--texto-light);border-radius:6px;padding:5px 12px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;}
+  .btn-edit-cli:hover{border-color:var(--verde);color:var(--verde);}
+  .btn-del-cli{background:none;border:1.5px solid var(--crema-dark);color:#ccc;border-radius:6px;padding:5px 12px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;}
+  .btn-del-cli:hover{border-color:var(--rojo);color:var(--rojo);}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--crema);border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+  .modal-head{background:var(--verde);padding:20px 24px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;}
+  .modal-head h2{font-family:'Playfair Display',serif;font-size:20px;color:var(--crema);}
+  .btn-close-modal{background:none;border:none;color:var(--arena);font-size:22px;cursor:pointer;line-height:1;}
+  .btn-close-modal:hover{color:white;}
+  .modal-body{padding:24px;}
+  .modal-field{margin-bottom:18px;}
+  .modal-field label{display:block;font-size:11px;font-weight:600;color:var(--texto-light);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+  .modal-field input,.modal-field select{width:100%;padding:10px 14px;border:1.5px solid var(--crema-dark);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;background:white;color:var(--texto);outline:none;}
+  .modal-field input:focus,.modal-field select:focus{border-color:var(--verde-mid);}
+  .precios-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+  .precios-grid-head{font-size:10px;font-weight:700;color:var(--texto-light);letter-spacing:1px;text-transform:uppercase;padding:0 4px;}
+  .precios-grid input{padding:8px 10px;border:1.5px solid var(--crema-dark);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;outline:none;text-align:right;}
+  .precios-grid input:focus{border-color:var(--verde-mid);}
+  .precios-grid .var-name{font-size:12px;font-weight:500;color:var(--texto);padding:0 4px;}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--crema-dark);display:flex;justify-content:flex-end;gap:10px;}
+  .btn-save-cli{background:var(--verde-g);color:white;border:none;border-radius:8px;padding:10px 24px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+  .btn-save-cli:hover{background:#155e2e;}
+
+  /* LISTAS */
+  .listas-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:26px;}
+  .lcard{background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07);}
+  .lcard-h{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+  .lcard-h h3{font-family:'Playfair Display',serif;font-size:16px;color:white;}
+  .lcard-h .rol{font-size:10px;color:rgba(255,255,255,0.55);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+  .lcard-h .avg{font-size:21px;font-weight:700;color:#7ed9a0;font-family:'Playfair Display',serif;}
+  .lcard-h .avg-l{font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:1px;text-transform:uppercase;text-align:right;}
+  .lt{width:100%;border-collapse:collapse;}
+  .lt thead tr{background:var(--crema);}
+  .lt thead th{padding:7px 12px;font-size:10px;font-weight:600;color:var(--texto-light);letter-spacing:1px;text-transform:uppercase;text-align:right;}
+  .lt thead th:first-child{text-align:left;}
+  .lt tbody td{padding:8px 12px;font-size:12px;text-align:right;border-bottom:1px solid var(--crema-dark);}
+  .lt tbody tr:last-child td{border-bottom:none;}
+  .lt tbody td:first-child{text-align:left;font-weight:500;}
+  .tag{background:var(--crema-dark);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600;color:var(--texto-light);}
+
+  .empty-hist{text-align:center;padding:60px 0;color:var(--arena);font-size:14px;}
+  .empty-hist .ei{font-size:40px;margin-bottom:10px;}
+
+  .loading-overlay{position:fixed;inset:0;background:rgba(26,77,46,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+  .loading-overlay h2{color:var(--crema);font-family:'Playfair Display',serif;font-size:22px;margin-bottom:8px;}
+  .loading-overlay p{color:var(--arena);font-size:13px;}
+  .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.2);border-top-color:#7ed9a0;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:20px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Color swatches */
+  .color-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .color-opt{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border 0.15s;}
+  .color-opt.selected{border-color:var(--texto);}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <h2>Conectando...</h2>
+  <p>Sincronizando con la base de datos</p>
+</div>
+
+<!-- MODAL NUEVO/EDITAR CLIENTE -->
+<div class="modal-overlay" id="modal-cli">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Nuevo cliente</h2>
+      <button class="btn-close-modal" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Nombre del cliente</label>
+        <input type="text" id="cli-nombre" placeholder="Ej: Almacén San Martín">
+      </div>
+      <div class="modal-field">
+        <label>Color</label>
+        <div class="color-opts" id="color-opts">
+          <div class="color-opt selected" style="background:#1a4d2e" data-color="#1a4d2e" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#2c4a6e" data-color="#2c4a6e" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#8b3a1a" data-color="#8b3a1a" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#5a4a1a" data-color="#5a4a1a" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#3a1a5a" data-color="#3a1a5a" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#1a3a5a" data-color="#1a3a5a" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#5a1a2a" data-color="#5a1a2a" onclick="selColor(this)"></div>
+          <div class="color-opt" style="background:#2a5a1a" data-color="#2a5a1a" onclick="selColor(this)"></div>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Precios por KG (dejá vacío si no aplica)</label>
+        <div style="margin-top:10px">
+          <div class="precios-grid" style="margin-bottom:6px">
+            <div class="precios-grid-head">Variedad</div>
+            <div class="precios-grid-head" style="text-align:right">1 KG</div>
+            <div class="precios-grid-head" style="text-align:right">500g</div>
+          </div>
+          <div id="precios-form"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sec" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save-cli" onclick="saveCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <h1>Canarias · Mayorista</h1>
+    <p>Mateando · Registro de Ventas</p>
+  </div>
+  <div class="header-right">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span class="sync-label" id="sync-label">Conectando...</span>
+    <div class="header-badge" id="hdr-badge">—</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active"  onclick="showTab('sim',this)">🧮 Nuevo Pedido</div>
+  <div class="tab"         onclick="showTab('hist',this)">📦 Historial</div>
+  <div class="tab"         onclick="showTab('mes',this)">📊 Por Mes</div>
+  <div class="tab"         onclick="showTab('clientes',this)">⚙️ Clientes</div>
+  <div class="tab"         onclick="showTab('listas',this)">📋 Listas de Precios</div>
+</div>
+
+<main>
+
+<!-- ══ NUEVO PEDIDO ══ -->
+<div class="panel active" id="panel-sim">
+  <div class="cliente-bar">
+    <label>Cliente</label>
+    <select id="sel-cli" onchange="onCli()">
+      <option value="">— Personalizado —</option>
+    </select>
+    <label>Fecha</label>
+    <input type="date" id="inp-fecha">
+    <div class="cliente-tag" id="cli-tag">Ingresá el precio manualmente</div>
+  </div>
+  <div class="sec">Agregar línea</div>
+  <div class="add-row">
+    <div class="campo">
+      <label>Variedad</label>
+      <select id="sel-var" onchange="onVar()">
+        <option value="">Seleccionar...</option>
+        <option>Canarias Tradicional</option>
+        <option>Canarias Serena</option>
+        <option>Canarias Edición Especial</option>
+        <option>Canarias Té Verde y Jengibre</option>
+        <option>Baldo</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>Tamaño</label>
+      <select id="sel-tam" onchange="onVar()">
+        <option value="">Seleccionar...</option>
+        <option value="1K">1 KG</option>
+        <option value="500g">500g</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>KG</label>
+      <input type="number" id="inp-qty" min="1" value="20" oninput="updPrev()">
+    </div>
+    <div class="campo">
+      <label>Precio venta / KG</label>
+      <input type="number" id="inp-p" placeholder="Ej: 7400" oninput="updPrev()">
+    </div>
+    <button class="btn-add" onclick="addLine()">+ Agregar</button>
+  </div>
+  <div class="preview" id="prev"><span style="font-size:12px">Seleccioná variedad y tamaño para ver el costo</span></div>
+  <div class="sec">Detalle del pedido</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="text-align:left">Producto</th>
+        <th style="text-align:right">KG</th><th style="text-align:right">Bolsones</th>
+        <th>Costo/KG</th><th>Costo total</th>
+        <th>Precio/KG</th><th>Ingreso total</th>
+        <th>Ganancia</th><th>Margen</th><th></th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="tot-bar" id="tots" style="display:none">
+    <div class="tot-item"><div class="tot-lbl">KG totales</div><div class="tot-val" id="tKG">0</div></div>
+    <div class="tot-item"><div class="tot-lbl">Costo total</div><div class="tot-val" id="tC">$0</div></div>
+    <div class="tot-item"><div class="tot-lbl">Ingreso total</div><div class="tot-val" id="tI">$0</div></div>
+    <div class="tot-item"><div class="tot-lbl">Ganancia</div><div class="tot-val g" id="tG">$0</div></div>
+  </div>
+  <div class="nota" id="nota" style="display:none"></div>
+  <div class="acc">
+    <button class="btn-sec" onclick="clearAll()">Limpiar pedido</button>
+    <button class="btn-registrar" id="btn-reg" onclick="registrarVenta()" disabled>✓ Registrar venta</button>
+  </div>
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="panel" id="panel-hist">
+  <div class="hist-filters">
+    <select id="filt-cli" onchange="renderHist()"><option value="">Todos los clientes</option></select>
+    <select id="filt-mes" onchange="renderHist()"><option value="">Todos los meses</option></select>
+    <button class="btn-sec" onclick="exportCSV()" style="margin-left:auto">⬇ Exportar CSV</button>
+  </div>
+  <div id="hist-wrap"></div>
+</div>
+
+<!-- ══ POR MES ══ -->
+<div class="panel" id="panel-mes">
+  <div class="mes-kpis">
+    <div class="kpi-card"><div class="kpi-lbl">Total ganancia</div><div class="kpi-val green" id="kpi-gan">$0</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Total ingreso</div><div class="kpi-val" id="kpi-ing">$0</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">KG vendidos</div><div class="kpi-val" id="kpi-kg">0</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Margen promedio</div><div class="kpi-val green" id="kpi-mg">0%</div></div>
+  </div>
+  <div class="sec">Resumen por mes</div>
+  <table class="mes-table"><thead><tr>
+    <th style="text-align:left">Mes</th><th style="text-align:right">Ventas</th>
+    <th>KG</th><th>Costo</th><th>Ingreso</th><th>Ganancia</th><th>Margen</th>
+  </tr></thead><tbody id="mes-body"></tbody></table>
+  <div class="por-cliente" id="por-cliente"></div>
+</div>
+
+<!-- ══ CLIENTES ══ -->
+<div class="panel" id="panel-clientes">
+  <div class="cli-topbar">
+    <div>
+      <div class="sec" style="margin-bottom:0">Clientes registrados</div>
+      <div style="font-size:12px;color:var(--texto-light);margin-top:4px">Los precios se autocargan en el simulador</div>
+    </div>
+    <button class="btn-nuevo-cli" onclick="openModal()">+ Nuevo cliente</button>
+  </div>
+  <div class="cli-grid" id="cli-grid"></div>
+</div>
+
+<!-- ══ LISTAS ══ -->
+<div class="panel" id="panel-listas">
+  <div class="listas-grid" id="listas-grid"></div>
+</div>
+
+</main>
+
+<script>
+// ── FIREBASE ──
+const firebaseConfig={
+  apiKey:"AIzaSyA3o2e5Xsw3j0ZgMyjh_a_dHA_VN4V3iBg",
+  authDomain:"canarias-mateando.firebaseapp.com",
+  databaseURL:"https://canarias-mateando-default-rtdb.firebaseio.com",
+  projectId:"canarias-mateando",
+  storageBucket:"canarias-mateando.firebasestorage.app",
+  messagingSenderId:"854609135197",
+  appId:"1:854609135197:web:9620d3918460b850682fb4"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const ventasRef=db.ref('ventas');
+const clientesRef=db.ref('clientes');
+
+// ── COSTOS JP ──
+const C={
+  "Canarias Tradicional":        {"1K":6091.55,"500g":3206.98},
+  "Canarias Serena":             {"1K":6349.33,"500g":3494.93},
+  "Canarias Edición Especial":   {"1K":6643.13,"500g":3550.40},
+  "Canarias Té Verde y Jengibre":{"1K":6643.13,"500g":3550.40},
+  "Baldo":                       {"1K":6776,   "500g":3703},
+};
+const VS=Object.keys(C), TS=["1K","500g"];
+const kgPB=t=>t==='1K'?20:10;
+const f  =n=>n!=null?'$'+Math.round(n).toLocaleString('es-AR'):'—';
+const fn =n=>n!=null?Math.round(n).toLocaleString('es-AR'):'—';
+const pct=n=>n!=null?n.toFixed(1)+'%':'—';
+const mgc=m=>m==null?'':m>=30?'mg':m>=15?'mm':'mr';
+const mgn=(p,c)=>p&&c?(p-c)/p*100:null;
+
+// CLIENTES POR DEFECTO (se cargan a Firebase si está vacío)
+const DEFAULT_CLIENTES=[
+  {nombre:"Lista Bolsón",color:"#3a6b2a",precios:{"Canarias Tradicional":{"1K":7400,"500g":3900},"Canarias Serena":{"1K":7700,"500g":4200},"Canarias Edición Especial":{"1K":8000,"500g":4300},"Canarias Té Verde y Jengibre":{"1K":8000,"500g":4300},"Baldo":{"1K":null,"500g":null}}},
+  {nombre:"Lista Pallet",color:"#5a4a1a",precios:{"Canarias Tradicional":{"1K":7100,"500g":3700},"Canarias Serena":{"1K":7400,"500g":4100},"Canarias Edición Especial":{"1K":7700,"500g":4100},"Canarias Té Verde y Jengibre":{"1K":7700,"500g":4100},"Baldo":{"1K":null,"500g":null}}},
+  {nombre:"Juan Cruz",color:"#1a4d2e",precios:{"Canarias Tradicional":{"1K":7053,"500g":3881},"Canarias Serena":{"1K":7572,"500g":4231},"Canarias Edición Especial":{"1K":7692,"500g":4298},"Canarias Té Verde y Jengibre":{"1K":7692,"500g":4298},"Baldo":{"1K":7454,"500g":4258}}},
+  {nombre:"Nico Ciudadela",color:"#2c4a6e",precios:{"Canarias Tradicional":{"1K":7200,"500g":3900},"Canarias Serena":{"1K":7800,"500g":4079},"Canarias Edición Especial":{"1K":7900,"500g":4150},"Canarias Té Verde y Jengibre":{"1K":7900,"500g":4150},"Baldo":{"1K":null,"500g":null}}},
+  {nombre:"Supermercado Chino Costa Rica",color:"#8b3a1a",precios:{"Canarias Tradicional":{"1K":7400,"500g":3900},"Canarias Serena":{"1K":7700,"500g":4200},"Canarias Edición Especial":{"1K":8000,"500g":4300},"Canarias Té Verde y Jengibre":{"1K":8000,"500g":4300},"Baldo":{"1K":null,"500g":null}}},
+];
+
+// ── STATE ──
+let ventas=[], clientes=[], lines=[], lid=0;
+let editingCliKey=null, selectedColor='#1a4d2e';
+let dataLoaded=0;
+
+function checkLoaded(){
+  dataLoaded++;
+  if(dataLoaded>=2){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('sync-dot').className='sync-dot';
+    document.getElementById('sync-label').textContent='En línea';
+  }
+}
+
+// ── LOAD VENTAS ──
+ventasRef.on('value',snap=>{
+  const d=snap.val();
+  ventas=d?Object.entries(d).map(([k,v])=>({...v,fbKey:k})):[];
+  ventas.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  updBadge();
+  const ap=document.querySelector('.panel.active');
+  if(ap?.id==='panel-hist'){buildMesFilter();renderHist();}
+  if(ap?.id==='panel-mes')renderMes();
+  checkLoaded();
+},()=>{
+  document.getElementById('loading').style.display='none';
+  document.getElementById('sync-dot').className='sync-dot off';
+  document.getElementById('sync-label').textContent='Sin conexión';
+});
+
+// ── LOAD CLIENTES ──
+clientesRef.on('value',snap=>{
+  const d=snap.val();
+  if(!d){
+    // Cargar defaults
+    DEFAULT_CLIENTES.forEach(c=>clientesRef.push(c));
+    return;
+  }
+  clientes=Object.entries(d).map(([k,v])=>({...v,fbKey:k}));
+  rebuildClienteSelector();
+  rebuildHistFiltCliente();
+  const ap=document.querySelector('.panel.active');
+  if(ap?.id==='panel-clientes')renderClientes();
+  if(ap?.id==='panel-listas')buildListas();
+  checkLoaded();
+});
+
+// ── SELECTOR CLIENTES ──
+function rebuildClienteSelector(){
+  const sel=document.getElementById('sel-cli');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Personalizado —</option>'+
+    clientes.map(c=>`<option value="${c.fbKey}">${c.nombre}</option>`).join('');
+  if(cur) sel.value=cur;
+}
+function rebuildHistFiltCliente(){
+  const sel=document.getElementById('filt-cli');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos los clientes</option>'+
+    [...new Set(ventas.map(v=>v.cliente))].map(n=>`<option value="${n}"${n===cur?' selected':''}>${n}</option>`).join('');
+}
+
+// ── TABS ──
+function showTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='listas')buildListas();
+  if(id==='hist'){buildMesFilter();renderHist();}
+  if(id==='mes')renderMes();
+  if(id==='clientes')renderClientes();
+}
+
+// ── SIMULADOR ──
+document.getElementById('inp-fecha').value=new Date().toISOString().slice(0,10);
+
+function getCliObj(){
+  const k=document.getElementById('sel-cli').value;
+  return k?clientes.find(c=>c.fbKey===k):null;
+}
+function onCli(){
+  const c=getCliObj();
+  const tag=document.getElementById('cli-tag');
+  if(c) tag.innerHTML=`<strong>${c.nombre}</strong> · precios cargados automáticamente`;
+  else tag.textContent='Ingresá el precio manualmente';
+  onVar();
+}
+function onVar(){
+  const v=document.getElementById('sel-var').value;
+  const t=document.getElementById('sel-tam').value;
+  const c=getCliObj();
+  if(c&&v&&t){const p=c.precios?.[v]?.[t];if(p)document.getElementById('inp-p').value=p;}
+  updPrev();
+}
+function updPrev(){
+  const v=document.getElementById('sel-var').value;
+  const t=document.getElementById('sel-tam').value;
+  const p=parseFloat(document.getElementById('inp-p').value)||0;
+  const kg=parseInt(document.getElementById('inp-qty').value)||0;
+  const c=C[v]?.[t];
+  const el=document.getElementById('prev');
+  if(!c){el.innerHTML='<span style="font-size:12px">Seleccioná variedad y tamaño para ver el costo</span>';return;}
+  const bol=t?(kg/kgPB(t)).toFixed(1):'?';
+  let h=`Costo JP: <strong>${f(c)}</strong>/KG · ${kg} KG = <strong>${bol} bolsones</strong>`;
+  if(p>0){
+    const m=(p-c)/p*100,g=(p-c)*kg;
+    const col=m>=30?'var(--verde-g)':m>=15?'var(--amarillo)':'var(--rojo)';
+    h+=` &nbsp;·&nbsp; <span style="color:${col};font-weight:600">Margen: ${m.toFixed(1)}% · Ganancia: ${f(g)}</span>`;
+  }
+  el.innerHTML=h;
+}
+function addLine(){
+  const v=document.getElementById('sel-var').value;
+  const t=document.getElementById('sel-tam').value;
+  const kg=parseInt(document.getElementById('inp-qty').value)||0;
+  const p=parseFloat(document.getElementById('inp-p').value)||0;
+  if(!v||!t){alert('Seleccioná variedad y tamaño');return;}
+  if(!kg){alert('Ingresá los KG');return;}
+  if(!p){alert('Ingresá un precio de venta');return;}
+  lines.push({id:++lid,v,t,kg,p,c:C[v][t]});
+  renderTable();
+  document.getElementById('sel-var').value='';
+  document.getElementById('sel-tam').value='';
+  document.getElementById('inp-qty').value=20;
+  document.getElementById('inp-p').value='';
+  updPrev();
+}
+function delLine(i){lines=lines.filter(l=>l.id!==i);renderTable();}
+function updP(i,val){const l=lines.find(x=>x.id===i);if(l)l.p=parseFloat(val)||0;renderTots();updNota();}
+function renderTable(){
+  const tb=document.getElementById('tbody'),tots=document.getElementById('tots'),btn=document.getElementById('btn-reg');
+  if(!lines.length){
+    tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="ei">🧉</div><p>Agregá líneas al pedido para comenzar</p></div></td></tr>`;
+    tots.style.display='none';document.getElementById('nota').style.display='none';btn.disabled=true;return;
+  }
+  tots.style.display='grid';btn.disabled=false;
+  tb.innerHTML=lines.map(l=>{
+    const bol=l.kg/kgPB(l.t);
+    const m=l.p>0?(l.p-l.c)/l.p*100:0,mc=m>=30?'mg':m>=15?'mm':'mr';
+    return `<tr>
+      <td><span class="ty">${l.v}</span><br><span class="tm">${l.t}</span></td>
+      <td>${fn(l.kg)}</td><td>${Number.isInteger(bol)?bol:bol.toFixed(1)}</td>
+      <td>${f(l.c)}</td><td>${f(l.c*l.kg)}</td>
+      <td><input class="inp-t" type="number" value="${l.p}" oninput="updP(${l.id},this.value)"></td>
+      <td>${f(l.p*l.kg)}</td><td>${f((l.p-l.c)*l.kg)}</td>
+      <td class="td-m ${mc}">${m.toFixed(1)}%</td>
+      <td><button class="btn-x" onclick="delLine(${l.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+  renderTots();updNota();
+}
+function renderTots(){
+  const tKG=lines.reduce((s,l)=>s+l.kg,0);
+  const tC=lines.reduce((s,l)=>s+l.c*l.kg,0);
+  const tI=lines.reduce((s,l)=>s+l.p*l.kg,0);
+  document.getElementById('tKG').textContent=fn(tKG)+' kg';
+  document.getElementById('tC').textContent=f(tC);
+  document.getElementById('tI').textContent=f(tI);
+  document.getElementById('tG').textContent=f(tI-tC);
+}
+function updNota(){
+  const n=document.getElementById('nota');
+  if(!lines.length){n.style.display='none';return;}
+  const tC=lines.reduce((s,l)=>s+l.c*l.kg,0),tI=lines.reduce((s,l)=>s+l.p*l.kg,0);
+  const m=tI>0?(tI-tC)/tI*100:0,e=m>=30?'🟢':m>=15?'🟡':'🔴';
+  n.style.display='block';
+  n.innerHTML=`${e} <strong>Margen global del pedido: ${m.toFixed(1)}%</strong>`;
+}
+function clearAll(){
+  if(lines.length&&!confirm('¿Limpiás el pedido completo?'))return;
+  lines=[];renderTable();
+}
+function registrarVenta(){
+  if(!lines.length){alert('El pedido está vacío');return;}
+  const fecha=document.getElementById('inp-fecha').value;
+  if(!fecha){alert('Seleccioná una fecha');return;}
+  const cObj=getCliObj();
+  const clienteNombre=cObj?cObj.nombre:'Personalizado';
+  const tC=lines.reduce((s,l)=>s+l.c*l.kg,0);
+  const tI=lines.reduce((s,l)=>s+l.p*l.kg,0);
+  const tKG=lines.reduce((s,l)=>s+l.kg,0);
+  const venta={fecha,cliente:clienteNombre,
+    lines:lines.map(l=>({v:l.v,t:l.t,kg:l.kg,p:l.p,c:l.c})),
+    totCosto:Math.round(tC),totIngreso:Math.round(tI),totKG:tKG,
+    ganancia:Math.round(tI-tC),margen:tI>0?(tI-tC)/tI*100:0,
+    timestamp:Date.now()};
+  const btn=document.getElementById('btn-reg');
+  btn.disabled=true;btn.textContent='Guardando...';
+  ventasRef.push(venta).then(()=>{
+    clearAll();btn.innerHTML='✓ Registrar venta';
+    alert(`✓ Venta registrada para ${clienteNombre} — ${fecha}`);
+  }).catch(err=>{
+    alert('Error: '+err.message);btn.disabled=false;btn.innerHTML='✓ Registrar venta';
+  });
+}
+function updBadge(){
+  document.getElementById('hdr-badge').textContent=`${ventas.length} venta${ventas.length!==1?'s':''} registrada${ventas.length!==1?'s':''}`;
+}
+
+// ── HISTORIAL ──
+function buildMesFilter(){
+  const meses=[...new Set(ventas.map(v=>v.fecha.slice(0,7)))].sort().reverse();
+  const sel=document.getElementById('filt-mes'),cur=sel.value;
+  sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===cur?' selected':''}>${fmtMes(m)}</option>`).join('');
+}
+function renderHist(){
+  const cli=document.getElementById('filt-cli').value,mes=document.getElementById('filt-mes').value;
+  let filtradas=ventas.filter(v=>{
+    if(cli&&v.cliente!==cli)return false;
+    if(mes&&!v.fecha.startsWith(mes))return false;
+    return true;
+  }).slice().reverse();
+  const wrap=document.getElementById('hist-wrap');
+  if(!filtradas.length){wrap.innerHTML=`<div class="empty-hist"><div class="ei">📦</div><p>No hay ventas registradas todavía</p></div>`;return;}
+  wrap.innerHTML=filtradas.map(v=>{
+    const mc=mgc(v.margen);
+    const linesHtml=v.lines.map(l=>{
+      const bol=l.kg/kgPB(l.t),m2=l.p>0?(l.p-l.c)/l.p*100:0,mc2=m2>=30?'mg':m2>=15?'mm':'mr';
+      return `<tr>
+        <td><span class="ty" style="font-size:12px">${l.v}</span> <span class="tm">${l.t}</span></td>
+        <td>${fn(l.kg)}</td><td>${Number.isInteger(bol)?bol:bol.toFixed(1)}</td>
+        <td>${f(l.c)}</td><td>${f(l.c*l.kg)}</td><td>${f(l.p)}</td><td>${f(l.p*l.kg)}</td>
+        <td>${f((l.p-l.c)*l.kg)}</td><td class="td-m ${mc2}">${m2.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+    const uid=v.fbKey||v.fecha.replace(/-/g,'');
+    return `<div class="venta-card">
+      <div class="venta-header" onclick="toggleVenta('${uid}')">
+        <div class="vh-left">
+          <div class="vh-fecha">${fmtFecha(v.fecha)}</div>
+          <div><div class="vh-cliente">${v.cliente}</div><div class="vh-resumen">${fn(v.totKG)} KG · ${f(v.totIngreso)} ingreso</div></div>
+        </div>
+        <div class="vh-right">
+          <div><div class="vh-ganancia">${f(v.ganancia)}</div><div style="font-size:10px;color:var(--texto-light);text-align:right">ganancia</div></div>
+          <span class="vh-margen ${mc}">${v.margen.toFixed(1)}%</span>
+          <span class="vh-chevron" id="chev-${uid}">▼</span>
+        </div>
+      </div>
+      <div class="venta-body" id="vb-${uid}">
+        <table><thead><tr>
+          <th style="text-align:left">Producto</th><th style="text-align:right">KG</th><th style="text-align:right">Bol.</th>
+          <th>Costo/KG</th><th>Costo total</th><th>Precio/KG</th><th>Ingreso</th><th>Ganancia</th><th>Margen</th>
+        </tr></thead><tbody>${linesHtml}</tbody></table>
+        <div style="padding:10px 18px;text-align:right">
+          <button class="btn-del-venta" onclick="delVenta('${v.fbKey}')">🗑 Eliminar esta venta</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleVenta(uid){
+  document.getElementById('vb-'+uid)?.classList.toggle('open');
+  document.getElementById('chev-'+uid)?.classList.toggle('open');
+}
+function delVenta(fbKey){
+  if(!fbKey||!confirm('¿Eliminás esta venta del registro?'))return;
+  ventasRef.child(fbKey).remove();
+}
+
+// ── POR MES ──
+function renderMes(){
+  const tGan=ventas.reduce((s,v)=>s+v.ganancia,0);
+  const tIng=ventas.reduce((s,v)=>s+v.totIngreso,0);
+  const tKG=ventas.reduce((s,v)=>s+v.totKG,0);
+  document.getElementById('kpi-gan').textContent=f(tGan);
+  document.getElementById('kpi-ing').textContent=f(tIng);
+  document.getElementById('kpi-kg').textContent=fn(tKG)+' kg';
+  document.getElementById('kpi-mg').textContent=pct(tIng>0?tGan/tIng*100:0);
+  const byMes={};
+  ventas.forEach(v=>{
+    const m=v.fecha.slice(0,7);
+    if(!byMes[m])byMes[m]={ventas:0,kg:0,costo:0,ingreso:0,ganancia:0};
+    byMes[m].ventas++;byMes[m].kg+=v.totKG;byMes[m].costo+=v.totCosto;
+    byMes[m].ingreso+=v.totIngreso;byMes[m].ganancia+=v.ganancia;
+  });
+  const meses=Object.keys(byMes).sort().reverse();
+  document.getElementById('mes-body').innerHTML=meses.length?meses.map(m=>{
+    const d=byMes[m],mg2=d.ingreso>0?d.ganancia/d.ingreso*100:0;
+    return `<tr><td>${fmtMes(m)}</td><td>${d.ventas}</td><td>${fn(d.kg)} kg</td>
+      <td>${f(d.costo)}</td><td>${f(d.ingreso)}</td>
+      <td style="font-weight:700;color:var(--verde-g)">${f(d.ganancia)}</td>
+      <td class="td-m ${mgc(mg2)}">${pct(mg2)}</td></tr>`;
+  }).join(''):`<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--arena)">Sin ventas todavía</td></tr>`;
+  const byCli={};
+  ventas.forEach(v=>{
+    if(!byCli[v.cliente])byCli[v.cliente]={ventas:0,kg:0,ingreso:0,ganancia:0};
+    byCli[v.cliente].ventas++;byCli[v.cliente].kg+=v.totKG;
+    byCli[v.cliente].ingreso+=v.totIngreso;byCli[v.cliente].ganancia+=v.ganancia;
+  });
+  const pcEl=document.getElementById('por-cliente');
+  const cliColors={};clientes.forEach(c=>cliColors[c.nombre]=c.color||'#555');
+  pcEl.innerHTML=Object.keys(byCli).length?
+    `<div style="grid-column:1/-1;font-size:11px;font-weight:600;color:var(--texto-light);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Por cliente (acumulado)</div>`+
+    Object.entries(byCli).map(([cli,d])=>{
+      const mg2=d.ingreso>0?d.ganancia/d.ingreso*100:0;
+      const bg=cliColors[cli]||'#555';
+      return `<div class="pc-card">
+        <div class="pc-head" style="background:${bg}">${cli}</div>
+        <div class="pc-body">
+          <div class="pc-row"><span class="lbl">Ventas</span><span class="val">${d.ventas}</span></div>
+          <div class="pc-row"><span class="lbl">KG totales</span><span class="val">${fn(d.kg)} kg</span></div>
+          <div class="pc-row"><span class="lbl">Ingreso total</span><span class="val">${f(d.ingreso)}</span></div>
+          <div class="pc-row"><span class="lbl">Ganancia total</span><span class="val g">${f(d.ganancia)}</span></div>
+          <div class="pc-row"><span class="lbl">Margen prom.</span><span class="val">${pct(mg2)}</span></div>
+        </div>
+      </div>`;
+    }).join(''):'';
+}
+
+// ── CLIENTES ──
+function renderClientes(){
+  const grid=document.getElementById('cli-grid');
+  if(!clientes.length){grid.innerHTML=`<div class="empty-hist"><div class="ei">👤</div><p>No hay clientes todavía</p></div>`;return;}
+  grid.innerHTML=clientes.map(c=>{
+    let s=0,cnt=0;
+    VS.forEach(v=>TS.forEach(t=>{
+      const p=c.precios?.[v]?.[t],cost=C[v][t],m=mgn(p,cost);
+      if(m!=null){s+=m;cnt++;}
+    }));
+    const avg=cnt>0?s/cnt:null;
+    const rows=VS.flatMap(v=>TS.map(t=>{
+      const p=c.precios?.[v]?.[t];
+      if(!p)return '';
+      return `<div class="cli-price-row"><span class="pname">${v} <span class="tag">${t}</span></span><span class="pval">${f(p)}</span></div>`;
+    })).filter(Boolean).join('');
+    return `<div class="cli-card">
+      <div class="cli-card-head" style="background:${c.color||'#555'}">
+        <h3>${c.nombre}</h3>
+        <div><div class="cli-avg">${avg!=null?pct(avg):'—'}</div><div class="cli-avg-l">margen prom.</div></div>
+      </div>
+      <div class="cli-card-body">${rows||'<div style="color:var(--arena);font-size:12px">Sin precios cargados</div>'}</div>
+      <div class="cli-actions">
+        <button class="btn-edit-cli" onclick="openModal('${c.fbKey}')">✏️ Editar</button>
+        <button class="btn-del-cli" onclick="deleteCliente('${c.fbKey}','${c.nombre}')">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function deleteCliente(fbKey,nombre){
+  if(!confirm(`¿Eliminás a "${nombre}"?`))return;
+  clientesRef.child(fbKey).remove();
+}
+
+// ── MODAL ──
+function selColor(el){
+  document.querySelectorAll('.color-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedColor=el.dataset.color;
+}
+function buildPreciosForm(precios){
+  const pf=document.getElementById('precios-form');
+  pf.innerHTML=VS.map(v=>`
+    <div class="precios-grid" style="margin-bottom:6px">
+      <div class="var-name">${v}</div>
+      <input type="number" id="pf-${v}-1K" placeholder="—" value="${precios?.[v]?.['1K']||''}" style="text-align:right">
+      <input type="number" id="pf-${v}-500g" placeholder="—" value="${precios?.[v]?.['500g']||''}" style="text-align:right">
+    </div>`).join('');
+}
+function openModal(fbKey){
+  editingCliKey=fbKey||null;
+  const c=fbKey?clientes.find(x=>x.fbKey===fbKey):null;
+  document.getElementById('modal-title').textContent=c?'Editar cliente':'Nuevo cliente';
+  document.getElementById('cli-nombre').value=c?.nombre||'';
+  selectedColor=c?.color||'#1a4d2e';
+  document.querySelectorAll('.color-opt').forEach(e=>{
+    e.classList.toggle('selected',e.dataset.color===selectedColor);
+  });
+  buildPreciosForm(c?.precios);
+  document.getElementById('modal-cli').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modal-cli').classList.remove('open');
+  editingCliKey=null;
+}
+function saveCliente(){
+  const nombre=document.getElementById('cli-nombre').value.trim();
+  if(!nombre){alert('Ingresá el nombre del cliente');return;}
+  const precios={};
+  VS.forEach(v=>{
+    precios[v]={};
+    TS.forEach(t=>{
+      const val=parseFloat(document.getElementById(`pf-${v}-${t}`)?.value)||null;
+      precios[v][t]=val;
+    });
+  });
+  const data={nombre,color:selectedColor,precios};
+  const ref=editingCliKey?clientesRef.child(editingCliKey):clientesRef.push();
+  ref.set(data).then(()=>{closeModal();renderClientes();}).catch(e=>alert('Error: '+e.message));
+}
+
+// ── LISTAS ──
+function buildListas(){
+  const grid=document.getElementById('listas-grid');
+  grid.innerHTML=clientes.map(c=>{
+    let s=0,cnt=0;
+    let h=`<thead><tr><th style="text-align:left">Variedad</th><th style="text-align:left"></th><th>Precio/KG</th><th>Bolsón ×20</th><th>Margen</th></tr></thead><tbody>`;
+    VS.forEach(v=>TS.forEach(t=>{
+      const p=c.precios?.[v]?.[t],cost=C[v][t],m=mgn(p,cost);
+      if(m!=null){s+=m;cnt++;}
+      h+=`<tr><td>${v}</td><td><span class="tag">${t}</span></td><td>${f(p)}</td><td>${p?f(p*kgPB(t)):'—'}</td><td class="${mgc(m)}" style="font-weight:700">${m!=null?pct(m):'—'}</td></tr>`;
+    }));
+    h+='</tbody>';
+    const avg=cnt>0?s/cnt:null;
+    return `<div class="lcard">
+      <div class="lcard-h" style="background:${c.color||'#555'}">
+        <div><h3>${c.nombre}</h3><div class="rol">Precio por KG</div></div>
+        <div style="text-align:right"><div class="avg">${avg!=null?pct(avg):'—'}</div><div class="avg-l">margen prom.</div></div>
+      </div>
+      <table class="lt">${h}</table>
+    </div>`;
+  }).join('');
+}
+
+// ── HELPERS ──
+function fmtFecha(s){
+  const[y,m,d]=s.split('-');
+  return `${d} ${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]} ${y}`;
+}
+function fmtMes(s){
+  const[y,m]=s.split('-');
+  return `${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][+m-1]} ${y}`;
+}
+function exportCSV(){
+  const rows=[['Fecha','Cliente','KG','Costo total','Ingreso total','Ganancia','Margen %']];
+  ventas.forEach(v=>rows.push([v.fecha,v.cliente,v.totKG,v.totCosto,v.totIngreso,v.ganancia,v.margen.toFixed(1)]));
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download='canarias-ventas.csv';a.click();
+}
+</script>
+</body>
+</html>
